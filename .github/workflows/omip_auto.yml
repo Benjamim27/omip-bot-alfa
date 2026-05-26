@@ -1,33 +1,32 @@
 name: Execucao Diaria OMIP
 
 on:
-  workflow_dispatch: # Este comando permite o disparo externo pelo cron-job.org
+  workflow_dispatch:
 
 permissions:
-  contents: write # Permite que o robô escreva a nova data no ficheiro ultima_data.txt
+  contents: write
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Clonar o código para o GitHub
+      - name: Clonar codigo
         uses: actions/checkout@v3
 
-      - name: 2. Instalar o Python
+      - name: Configurar Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: 3. Instalar as bibliotecas (requests e bs4)
-        run: |
-          pip install -r requirements.txt
+      - name: Instalar pacotes
+        run: pip install -r requirements.txt
 
-      - name: 4. Executar o Script OMIP
+      - name: Executar script
         env:
-          EMAIL_SENHA: ${{ secrets.EMAIL_SENHA }} # Puxa a senha dos Secrets do GitHub
+          EMAIL_SENHA: ${{ secrets.EMAIL_SENHA }}
         run: python script.py
 
-      - name: 5. Guardar a nova data (Evita e-mails repetidos)
+      - name: Guardar data
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
