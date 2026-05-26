@@ -3,15 +3,19 @@ name: Execucao Diaria OMIP
 on:
   workflow_dispatch:
 
+# ESTA É A CHAVE: Dá autorização total ao robô para fazer o 'git push'
+permissions:
+  contents: write
+
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # Atualizado para v4 (Node.js 24)
 
       - name: Python Setup
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5  # Atualizado para v5 (Node.js 24)
         with:
           python-version: '3.10'
 
