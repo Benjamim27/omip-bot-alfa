@@ -13,8 +13,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # Isto garante que o checkout usa direitos totais desde o início
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Usa o teu token pessoal logo no início do processo
+          token: ${{ secrets.MEU_GITHUB_TOKEN }}
 
       - name: Python Setup
         uses: actions/setup-python@v5
@@ -36,6 +36,5 @@ jobs:
           git add ultima_data.txt
           git commit -m "Data atualizada [skip ci]" || exit 0
           
-          # Removido o push simples que dava erro 403
-          # Usamos o token embutido para forçar a autenticação no push
-          git push https://x-token-auth:${{ secrets.GITHUB_TOKEN }}@github.com/Benjamim27/omip-bot-alfa.git main
+          # Usamos o teu token pessoal autenticado para forçar o push sem falhas
+          git push https://x-access-token:${{ secrets.MEU_GITHUB_TOKEN }}@github.com/Benjamim27/omip-bot-alfa.git main
