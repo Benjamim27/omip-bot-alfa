@@ -1,43 +1,40 @@
-name: Executar Bot OMIP
+name: Run Bot OMIP
 
-# AGORA APENAS ATIVA POR DISPARO MANUAL OU VIA API (CRON-JOB.ORG)
 on:
-  workflow_dispatch: 
+  workflow_dispatch: # Permite-te correr o robô à mão no site do GitHub sempre que quiseres
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     
+    # Dá permissão ao robô para salvar o ficheiro JSON no teu repositório
     permissions:
       contents: write
 
     steps:
-    - name: Checkout do código
-      uses: actions/checkout@v4
+      - name: Checkout código
+        uses: actions/checkout@v4
 
-    - name: Configurar Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-    - name: Instalar Dependências
-      run: |
-        python -m pip install --upgrade pip
-        pip install requests beautifulsoup4
+      - name: Instalar dependências
+        run: |
+          pip install requests
 
-    - name: Executar o Script Python
-      env:
-        FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-        EMAIL_SENHA: ${{ secrets.EMAIL_SENHA }} 
-      run: python script.py  
+      - name: Executar o Script
+        run: python omip_bot.py # Garante que este é o nome exato do teu ficheiro Python
 
-    - name: Guardar histórico JSON caso tenha mudado
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        
-        if [ -f historico_omip.json ]; then
-          git add historico_omip.json
-          git commit -m "🤖 Histórico JSON atualizado [skip ci]" || true
+      # Salva o teu ficheiro de histórico para o bloqueio de e-mails repetidos funcionar
+      - name: Guardar Histórico Atualizado
+        run: |
+          git config --global user.name "GitHub Action Bot"
+          git config --global user.email "actions@github.com"
+          git add historico_omip.json || true
+          git commit -m "💾 [Bot] Histórico de preços OMIP atualizado" || true
           git push || true
-        fi
