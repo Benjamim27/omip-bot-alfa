@@ -1,18 +1,1 @@
-{
-    "DATA_TABELA": "27/05/2026",
-    "PORTUGAL": {
-        "BASE": 60.39,
-        "Wk": 50.25,
-        "M\u00eas": 62.55,
-        "Trimestre": 83.65,
-        "Ano": 59.55
-    },
-    "ESPANHA": {
-        "BASE": 60.37,
-        "Wk": 49.25,
-        "M\u00eas": 61.55,
-        "Trimestre": 83.0,
-        "Ano": 58.95,
-        "PPA": 53.04
-    }
-}
+{}
