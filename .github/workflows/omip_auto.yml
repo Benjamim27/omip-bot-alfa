@@ -26,22 +26,29 @@ jobs:
         run: |
           pip install requests
 
-      # Garante que o ficheiro JSON existe para não quebrar a primeira leitura
+      # Garante que o ficheiro JSON existe antes do script rodar
       - name: Garantir existência do histórico
         run: |
           if [ ! -f historico_omip.json ]; then
             echo "{}" > historico_omip.json
           fi
 
-      # 🎯 CORRIGIDO: Agora aponta para script.py que é o nome real no teu GitHub
+      # Executa o teu script.py
       - name: Executar o Script
         run: python script.py
 
-      # Guarda o histórico atualizado no teu repositório
+      # 🛡️ SISTEMA ANTIFALHA DO GIT: Só faz commit se o ficheiro tiver mudado mesmo
       - name: Guardar Histórico Atualizado
         run: |
           git config --global user.name "GitHub Action Bot"
           git config --global user.email "actions@github.com"
           git add historico_omip.json
-          git commit -m "💾 [Bot] Histórico de preços OMIP atualizado" || echo "Sem alterações para fazer commit"
-          git push || echo "Sem alterações para fazer push"
+          
+          # Verifica se há alterações reais no ficheiro antes de tentar o commit
+          if git diff --staged --quiet; then
+            echo "💤 Sem alterações no histórico. Nada para guardar."
+          else
+            git commit -m "💾 [Bot] Histórico de preços OMIP atualizado [skip ci]"
+            git push
+            echo "💾 Histórico atualizado e guardado no GitHub!"
+          fi
