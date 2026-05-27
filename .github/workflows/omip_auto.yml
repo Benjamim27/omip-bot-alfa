@@ -1,7 +1,7 @@
 name: Run Bot OMIP
 
 on:
-  workflow_dispatch: # Permite-te correr o robô à mão no site do GitHub sempre que quiseres
+  workflow_dispatch: # Botão manual "Run workflow"
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
@@ -10,7 +10,6 @@ jobs:
   run-bot:
     runs-on: ubuntu-latest
     
-    # Dá permissão ao robô para salvar o ficheiro JSON no teu repositório
     permissions:
       contents: write
 
@@ -27,14 +26,22 @@ jobs:
         run: |
           pip install requests
 
-      - name: Executar o Script
-        run: python omip_bot.py # Garante que este é o nome exato do teu ficheiro Python
+      # Garante que o ficheiro JSON existe para não quebrar a primeira leitura
+      - name: Garantir existência do histórico
+        run: |
+          if [ ! -f historico_omip.json ]; then
+            echo "{}" > historico_omip.json
+          fi
 
-      # Salva o teu ficheiro de histórico para o bloqueio de e-mails repetidos funcionar
+      # 🎯 CORRIGIDO: Agora aponta para script.py que é o nome real no teu GitHub
+      - name: Executar o Script
+        run: python script.py
+
+      # Guarda o histórico atualizado no teu repositório
       - name: Guardar Histórico Atualizado
         run: |
           git config --global user.name "GitHub Action Bot"
           git config --global user.email "actions@github.com"
-          git add historico_omip.json || true
-          git commit -m "💾 [Bot] Histórico de preços OMIP atualizado" || true
-          git push || true
+          git add historico_omip.json
+          git commit -m "💾 [Bot] Histórico de preços OMIP atualizado" || echo "Sem alterações para fazer commit"
+          git push || echo "Sem alterações para fazer push"
