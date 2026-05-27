@@ -13,8 +13,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # Mantemos o teu token no checkout para ele preparar o repositório com escrita
-          token: ${{ secrets.MEU_GITHUB_TOKEN }}
+          # Usamos o token nativo do GitHub. Não precisas de criar este secret!
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Python Setup
         uses: actions/setup-python@v5
@@ -34,11 +34,13 @@ jobs:
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
           
-          # Força o Git a reconhecer o repositório como seguro dentro da máquina virtual
+          # Evita problemas de propriedade de pastas no Linux
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           
           git add ultima_data.txt
+          
+          # Se não houver alterações na data, o script para aqui sem dar erro
           git commit -m "Data atualizada [skip ci]" || exit 0
           
-          # CORREÇÃO DO URL: Removido o ".git" do meio do caminho e ajustada a sintaxe do token
-          git push https://${{ secrets.MEU_GITHUB_TOKEN }}@github.com/Benjamim27/omip-bot-alfa.git HEAD:main
+          # Push nativo e direto usando o token que configurámos no checkout
+          git push origin HEAD:main
