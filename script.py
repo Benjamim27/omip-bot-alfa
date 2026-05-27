@@ -16,7 +16,9 @@ EMAIL_REMETENTE = "projetodiarioalfaenergia@gmail.com"
 EMAIL_SENHA = "sjdz gkjy xcfv stsf"  
 EMAIL_DESTINATARIO = "crybenjamim2007@gmail.com, pbenjamim2007@gmail.com"                      
 
-FICHEIRO_HISTORICO = "historico_omip.json"
+# 🎯 CORREÇÃO DE CAMINHO: Garante que encontra o JSON na pasta correta do GitHub
+DIRETORIO_ATUAL = os.path.dirname(os.path.abspath(__file__))
+FICHEIRO_HISTORICO = os.path.join(DIRETORIO_ATUAL, "historico_omip.json")
 
 def capturar_contrato_e_preco(texto, bloco_mercado, padrao_contrato):
     """Procura o nome exato do contrato e o seu respetivo preço no bloco do mercado"""
@@ -189,10 +191,10 @@ if __name__ == "__main__":
     
     pt_atual, es_atual = obter_dados_omip_validados()
     
-    # 🛑 TRAVA DE SEGURANÇA 1: Se o site vier vazio/zero, para em segurança sem dar erro no GitHub.
+    # 🛑 TRAVA DE SEGURANÇA: Se falhar ou vier a zeros, fecha com código de sucesso (0) para o GitHub não dar erro.
     if pt_atual["BASE"][1] == 0.0 or es_atual["BASE"][1] == 0.0:
-        print("⚠️ [BLOQUEIO] O site do OMIP não devolveu preços válidos neste momento (valores a zero).")
-        print("✅ Execução terminada de forma segura para evitar e-mails falsos.")
+        print("⚠️ [BLOQUEIO] O site do OMIP não devolveu preços válidos (valores a zero).")
+        print("✅ Execução controlada finalizada.")
         exit(0)
 
     historico_anterior = carregar_historico()
@@ -200,28 +202,25 @@ if __name__ == "__main__":
     momento_verificacao = datetime.now().strftime("%d/%m/%Y às %H:%M")
 
     if not historico_anterior:
-        # Primeiro run de sempre (cria histórico inicial)
         houve_alteracao = True
     else:
         pt_velho = historico_anterior.get("PORTUGAL", {})
         es_velho = historico_anterior.get("ESPANHA", {})
         
-        # Extraímos APENAS os preços limpos de espaços ou textos dinâmicos do site
         precos_pt_atual = extrair_apenas_precos(pt_atual)
         precos_es_atual = extrair_apenas_precos(es_atual)
         
         precos_pt_velho = extrair_apenas_precos(pt_velho)
         precos_es_velho = extrair_apenas_precos(es_velho)
         
-        # Comparação matemática estrita apenas dos preços
         if precos_pt_atual != precos_pt_velho or precos_es_atual != precos_es_velho:
             print("💰 Alteração real detetada nos preços de mercado!")
             houve_alteracao = True
 
     print("\n=============================================")
     print(f"🔍 VALORES LIDOS NESTE MOMENTO:")
-    print(f"🇵🇹 Portugal: {pt_atual['BASE'][0]} -> {pt_atual['BASE'][1]}€ | {pt_atual['Mês'][0]} -> {pt_atual['Mês'][1]}€")
-    print(f"🇪🇸 Espanha:  {es_atual['BASE'][0]} -> {es_atual['BASE'][1]}€ | {es_atual['Mês'][0]} -> {es_atual['Mês'][1]}€")
+    print(f"🇵🇹 Portugal: {pt_atual['BASE'][0]} -> {pt_atual['BASE'][1]}€")
+    print(f"🇪🇸 Espanha:  {es_atual['BASE'][0]} -> {es_atual['BASE'][1]}€")
     print("=============================================\n")
 
     if houve_alteracao:
@@ -229,7 +228,8 @@ if __name__ == "__main__":
             salvar_historico(momento_verificacao, pt_atual, es_atual)
             print("💾 Novo estado guardado no histórico JSON.")
     else:
-        ultima_data_gravada = historico_anterior.get("DATA_ENVIO", "data desconhecida")
-        print(f"💤 Sem novidades. Os preços são exatamente iguais aos guardados em: {ultima_data_gravada}.")
-        print("🚫 Envio de e-mail cancelado. GitHub finalizado com sucesso.")
-        exit(0)
+        print("💤 Sem novidades. Os preços são exatamente iguais aos anteriores.")
+        print("🚫 Envio de e-mail cancelado.")
+        
+    # 🎯 FIX SUPREMO PARA O GITHUB: Garante que o Python termina SEMPRE a dizer "0" (Sucesso!)
+    exit(0)
