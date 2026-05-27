@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import re
 import smtplib
 import os
+import json  
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import datetime
@@ -16,7 +17,7 @@ EMAIL_REMETENTE = "projetodiarioalfaenergia@gmail.com"
 EMAIL_SENHA = "sjdz gkjy xcfv stsf"  
 EMAIL_DESTINATARIO = "crybenjamim2007@gmail.com, pbenjamim2007@gmail.com"                      
 
-FICHEIRO_CONTROLO = "ultima_data.txt"
+FICHEIRO_HISTORICO = "historico_omip.json"
 
 def obter_data_tabela_omip():
     """Vai ao site do OMIP ler a data oficial da última atualização da tabela"""
@@ -28,18 +29,17 @@ def obter_data_tabela_omip():
         resposta = requests.get(url, headers=headers, timeout=15)
         if resposta.status_code == 200:
             soup = BeautifulSoup(resposta.text, 'html.parser')
-            # Procura o elemento que costuma indicar a data dos dados no ecrã
-            elemento_data = soup.find(text=re.compile(r'\d{2}/\d{2}/\d{4}'))
+            elemento_data = soup.find(string=re.compile(r'\d{2}/\d{2}/\d{4}'))
             if elemento_data:
-                data_encontrada = re.search(r'\d{2}/\d{2}/\d{4}', elemento_data).group(0)
-                return data_encontrada
+                return re.search(r'\d{2}/\d{2}/\d{4}', elemento_data).group(0)
     except Exception as e:
         print(f"⚠️ Não foi possível ler a data do site: {e}")
     
-    # Se falhar a leitura por algum motivo, devolve a data de hoje para segurança
     return datetime.now().strftime("%d/%m/%Y")
 
 def obter_dados_omip_validados():
+    # NOTA: Lembra-te que para o plano de 5 em 5 minutos fazer sentido a 100%,
+    # no futuro estes valores devem vir do scraping real da tabela do site!
     painel_pt = {
         "BASE": 60.39,
         "Wk": 50.25,
@@ -58,12 +58,32 @@ def obter_dados_omip_validados():
     }
     return painel_pt, painel_es
 
+def carregar_historico():
+    if os.path.exists(FICHEIRO_HISTORICO):
+        try:
+            with open(FICHEIRO_HISTORICO, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            pass
+    return {}
+
+def salvar_historico(data_mercado, pt, es):
+    # Salva a data juntamente com os preços para controlo duplo
+    historico = {
+        "DATA_TABELA": data_mercado,
+        "PORTUGAL": pt,
+        "ESPANHA": es
+    }
+    with open(FICHEIRO_HISTORICO, 'w', encoding='utf-8') as f:
+        json.dump(historico, f, indent=4)
+
 def enviar_email(dados_pt, dados_es, data_mercado):
     msg = MIMEMultipart('alternative')
     msg['Subject'] = f"📊 Fecho de Mercado OMIP - {data_mercado}"
     msg['From'] = EMAIL_REMETENTE
     msg['To'] = EMAIL_DESTINATARIO
 
+    # Teu HTML original recuperado na totalidade:
     html = f"""
     <html>
     <body style="font-family: Arial, sans-serif; color: #333; background-color: #f9f9f9; padding: 20px;">
@@ -104,22 +124,18 @@ def enviar_email(dados_pt, dados_es, data_mercado):
             </div>
             <div style="background-color: #f1f1f1; padding: 15px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #e0e0e0;">
                 Este é um e-mail automático gerado pelo sistema EMAIL-ALFA2.<br>
-                Configuração com trava de segurança anti-duplicação ativa.
+                Configuração com trava de segurança de preços e data ativa.
             </div>
         </div>
     </body>
     </html>
     """
-    
-    msg.attach(MIMEText(html, 'html'))
+    msg.attach(MIMEText(html, 'html', 'utf-8'))
 
     try:
-        print("📨 A ligar ao servidor SMTP do Gmail...")
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
         server.starttls()
         server.login(EMAIL_REMETENTE, EMAIL_SENHA)
-        print("🚀 A enviar o e-mail formatado...")
-        
         lista_emails = [email.strip() for email in EMAIL_DESTINATARIO.split(",")]
         server.sendmail(EMAIL_REMETENTE, lista_emails, msg.as_string())
         server.quit()
@@ -130,29 +146,38 @@ def enviar_email(dados_pt, dados_es, data_mercado):
         return False
 
 if __name__ == "__main__":
-    print("🔄 A verificar atualizações no mercado OMIP...")
-    data_atual_omip = obter_data_tabela_omip()
+    print("🔄 A verificar atualizações de preços no mercado OMIP...")
     
-    # Verificar se a data já foi processada anteriormente
-    ultima_data_gravada = ""
-    if os.path.exists(FICHEIRO_CONTROLO):
-        with open(FICHEIRO_CONTROLO, "r") as f:
-            ultima_data_gravada = f.read().strip()
-            
-    if data_atual_omip == ultima_data_gravada:
-        print(f"🛑 [Cancelado] Os valores da tabela ({data_atual_omip}) já foram enviados hoje. Nenhuma nova atualização encontrada.")
+    # 1. Busca a data e os valores atuais do site
+    data_atual_omip = obter_data_tabela_omip()
+    pt_atual, es_atual = obter_dados_omip_validados()
+    
+    # 2. Carrega o histórico gravado na execução anterior
+    historico_anterior = carregar_historico()
+    
+    houve_alteracao = False
+    
+    # 3. Lógica dupla (Bloqueia repetições de data e preços)
+    if not historico_anterior:
+        houve_alteracao = True  # Primeira execução, o ficheiro JSON está vazio
     else:
-        pt, es = obter_dados_omip_validados()
+        data_velha = historico_anterior.get("DATA_TABELA", "")
+        pt_velho = historico_anterior.get("PORTUGAL", {})
+        es_velho = historico_anterior.get("ESPANHA", {})
         
-        print("\n🔍 --- PAINEL DE CONFERÊNCIA FINAL ---")
-        print(f"📅 Data Detectada no Mercado: {data_atual_omip}")
-        print("🇵🇹 PORTUGAL:")
-        print(f"   ➔ PTEL BASE : {pt['BASE']:.2f} €/MWh | Wk: {pt['Wk']:.2f} | Mês: {pt['Mês']:.2f}")
-        print("🇪🇸 ESPANHA:")
-        print(f"   ➔ SPEL BASE : {es['BASE']:.2f} €/MWh | Wk: {es['Wk']:.2f} | Mês: {es['Mês']:.2f}")
-        print("-" * 40)
-        
-        # Só grava a nova data no ficheiro se o e-mail for enviado com sucesso
-        if enviar_email(pt, es, data_atual_omip):
-            with open(FICHEIRO_CONTROLO, "w") as f:
-                f.write(data_atual_omip)
+        # Dispara se a data mudar OU se qualquer preço mudar
+        if data_atual_omip != data_velha:
+            print(f"📅 Nova data detetada ({data_atual_omip}).")
+            houve_alteracao = True
+        elif pt_atual != pt_velho or es_atual != es_velho:
+            print("💰 Alteração de preços detetada no mercado.")
+            houve_alteracao = True
+
+    # 4. Decisão de Envio
+    if houve_alteracao:
+        print("\n🔍 --- PROCESSO DE ENVIO INICIADO ---")
+        if enviar_email(pt_atual, es_atual, data_atual_omip):
+            salvar_historico(data_atual_omip, pt_atual, es_atual)
+            print("💾 Novo estado guardado no histórico JSON.")
+    else:
+        print(f"💤 [{datetime.now().strftime('%H:%M:%S')}] Sem novidades. A data e os preços continuam iguais ao último envio.")
