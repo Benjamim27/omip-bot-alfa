@@ -14,7 +14,7 @@ SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 EMAIL_REMETENTE = "projetodiarioalfaenergia@gmail.com"
 EMAIL_SENHA = "sjdz gkjy xcfv stsf"  
-EMAIL_DESTINATARIO = "crybenjamim2007@gmail.com, pbenjamim2007@gmail.com, nunofalcao@alfaenergia.pt"                      
+EMAIL_DESTINATARIO = "crybenjamim2007@gmail.com, pbenjamim2007@gmail.com"                      
 
 FICHEIRO_CONTROLO = "ultima_data.txt"
 
