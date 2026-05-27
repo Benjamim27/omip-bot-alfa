@@ -114,7 +114,7 @@ def salvar_historico(data_envio, pt, es):
         json.dump(historico, f, indent=4)
 
 def extrair_apenas_precos(painel):
-    """Transforma o painel de tuplos complexos numa lista simples apenas com os valores numéricos dos preços"""
+    """Transforma o painel complexo numa estrutura apenas com chaves e preços numéricos"""
     return {chave: valor[1] for chave, valor in painel.items()}
 
 def enviar_email(dados_pt, dados_es, data_envio):
@@ -163,7 +163,7 @@ def enviar_email(dados_pt, dados_es, data_envio):
             </div>
             <div style="background-color: #f1f1f1; padding: 15px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #e0e0e0;">
                 Este é um e-mail automático gerado pelo sistema EMAIL-ALFA2.<br>
-                Bloqueio matemático ativo: O e-mail só é disparado se os valores numéricos mudarem.
+                Bloqueio matemático ativo: O e-mail só é disparado se os valores dos preços mudarem.
             </div>
         </div>
     </body>
@@ -189,31 +189,31 @@ if __name__ == "__main__":
     
     pt_atual, es_atual = obter_dados_omip_validados()
     
-    # 🛑 TRAVA DE SEGURANÇA 1: Impede valores a zero de irem para o e-mail
+    # 🛑 TRAVA DE SEGURANÇA 1: Se o site vier vazio/zero, para em segurança sem dar erro no GitHub.
     if pt_atual["BASE"][1] == 0.0 or es_atual["BASE"][1] == 0.0:
-        print("⚠️ [BLOQUEIO] O site do OMIP devolveu valores a zero ou está indisponível.")
-        print("🚫 Execução abortada de forma segura para evitar e-mails falsos.")
-        exit()
+        print("⚠️ [BLOQUEIO] O site do OMIP não devolveu preços válidos neste momento (valores a zero).")
+        print("✅ Execução terminada de forma segura para evitar e-mails falsos.")
+        exit(0)
 
     historico_anterior = carregar_historico()
     houve_alteracao = False
     momento_verificacao = datetime.now().strftime("%d/%m/%Y às %H:%M")
 
     if not historico_anterior:
+        # Primeiro run de sempre (cria histórico inicial)
         houve_alteracao = True
     else:
         pt_velho = historico_anterior.get("PORTUGAL", {})
         es_velho = historico_anterior.get("ESPANHA", {})
         
-        # 🎯 FIX CRUTIAL: Extraímos APENAS os valores dos preços puros (ex: 64.50)
-        # Isto descarta variações de espaços ou strings que o HTML gera dinamicamente.
+        # Extraímos APENAS os preços limpos de espaços ou textos dinâmicos do site
         precos_pt_atual = extrair_apenas_precos(pt_atual)
         precos_es_atual = extrair_apenas_precos(es_atual)
         
         precos_pt_velho = extrair_apenas_precos(pt_velho)
         precos_es_velho = extrair_apenas_precos(es_velho)
         
-        # Comparação matemática exata dos preços:
+        # Comparação matemática estrita apenas dos preços
         if precos_pt_atual != precos_pt_velho or precos_es_atual != precos_es_velho:
             print("💰 Alteração real detetada nos preços de mercado!")
             houve_alteracao = True
@@ -230,5 +230,6 @@ if __name__ == "__main__":
             print("💾 Novo estado guardado no histórico JSON.")
     else:
         ultima_data_gravada = historico_anterior.get("DATA_ENVIO", "data desconhecida")
-        print(f"💤 Sem novidades. Os preços são idênticos aos guardados em: {ultima_data_gravada}.")
-        print("🚫 Envio de e-mail cancelado. Sistema em repouso.")
+        print(f"💤 Sem novidades. Os preços são exatamente iguais aos guardados em: {ultima_data_gravada}.")
+        print("🚫 Envio de e-mail cancelado. GitHub finalizado com sucesso.")
+        exit(0)
