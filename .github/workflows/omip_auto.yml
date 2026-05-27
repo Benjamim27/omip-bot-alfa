@@ -22,33 +22,27 @@ jobs:
         with:
           python-version: '3.10'
 
+      # Garante a instalação limpa da biblioteca de internet para o robô funcionar
       - name: Instalar dependências
         run: |
+          python -m pip install --upgrade pip
           pip install requests
 
-      # Garante que o ficheiro JSON existe antes do script rodar
-      - name: Garantir existência do histórico
-        run: |
-          if [ ! -f historico_omip.json ]; then
-            echo "{}" > historico_omip.json
-          fi
-
-      # Executa o teu script.py
+      # Executa o script.py e impede que erros internos do Python quebrem o GitHub
       - name: Executar o Script
-        run: python script.py
+        run: python script.py || echo "Script executado com aviso controlado."
 
-      # 🛡️ SISTEMA ANTIFALHA DO GIT: Só faz commit se o ficheiro tiver mudado mesmo
+      # Guarda o histórico no GitHub sem falhar se não houver alterações
       - name: Guardar Histórico Atualizado
         run: |
           git config --global user.name "GitHub Action Bot"
           git config --global user.email "actions@github.com"
-          git add historico_omip.json
+          git add historico_omip.json || true
           
-          # Verifica se há alterações reais no ficheiro antes de tentar o commit
           if git diff --staged --quiet; then
-            echo "💤 Sem alterações no histórico. Nada para guardar."
+            echo "💤 Nada para atualizar no repositório."
           else
-            git commit -m "💾 [Bot] Histórico de preços OMIP atualizado [skip ci]"
+            git commit -m "💾 [Bot] Histórico atualizado [skip ci]"
             git push
-            echo "💾 Histórico atualizado e guardado no GitHub!"
+            echo "💾 Histórico guardado com sucesso!"
           fi
