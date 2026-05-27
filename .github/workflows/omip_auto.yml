@@ -1,46 +1,43 @@
-name: Execucao Diaria OMIP
+name: Executar Bot OMIP
 
+# AGORA APENAS ATIVA POR DISPARO MANUAL OU VIA API (CRON-JOB.ORG)
 on:
-  workflow_dispatch:
-
-permissions:
-  contents: write
+  workflow_dispatch: 
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Checkout do código
+      uses: actions/checkout@v4
 
-      - name: Python Setup
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
+    - name: Configurar Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
 
-      - name: Install
-        run: pip install -r requirements.txt
+    - name: Instalar Dependências
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests beautifulsoup4
 
-      - name: Run
-        env:
-          EMAIL_SENHA: ${{ secrets.EMAIL_SENHA }}
-        run: python script.py
+    - name: Executar o Script Python
+      env:
+        FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+        EMAIL_SENHA: ${{ secrets.EMAIL_SENHA }} 
+      run: python script.py  
 
-      - name: Save Date
-        run: |
-          git config --global user.email "actions@github.com"
-          git config --global user.name "GitHub Actions"
-          
-          # Evita problemas de propriedade de pastas no Linux
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          
-          # CORREÇÃO AQUI: Agora guarda o histórico em JSON
+    - name: Guardar histórico JSON caso tenha mudado
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        
+        if [ -f historico_omip.json ]; then
           git add historico_omip.json
-          
-          # Se não houver alterações, o script para aqui sem dar erro
-          git commit -m "🤖 Histórico JSON atualizado [skip ci]" || exit 0
-          
-          # Push para guardar o ficheiro na nuvem
-          git push origin HEAD:main
+          git commit -m "🤖 Histórico JSON atualizado [skip ci]" || true
+          git push || true
+        fi
