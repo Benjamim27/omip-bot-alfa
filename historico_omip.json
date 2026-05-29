@@ -1,9 +1,9 @@
 {
-    "DATA_ENVIO": "28/05/2026 \u00e0s 20:17",
+    "DATA_ENVIO": "29/05/2026 \u00e0s 12:04",
     "PORTUGAL": {
         "BASE": [
             "PTEL BASE",
-            79.59
+            62.32
         ],
         "Wk": [
             "Wk23-26",
@@ -25,7 +25,7 @@
     "ESPANHA": {
         "BASE": [
             "SPEL BASE",
-            79.59
+            62.32
         ],
         "Wk": [
             "Wk23-26",
@@ -46,6 +46,12 @@
         "PPA": [
             "PPA-27/36",
             53.56
+        ]
+    },
+    "SPOT": {
+        "SPEL_SOLAR": [
+            "SPEL SOLAR",
+            8.3
         ]
     }
 }
