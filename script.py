@@ -14,8 +14,7 @@ SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 EMAIL_REMETENTE = "projetodiarioalfaenergia@gmail.com"
 EMAIL_SENHA = "sjdz gkjy xcfv stsf"                      
-EMAIL_DESTINATARIO = "crybenjamim2007@gmail.com, pbenjamim2007@gmail.com, nunofalcao@alfaenergia.pt
-"                      
+EMAIL_DESTINATARIO = "crybenjamim2007@gmail.com, pbenjamim2007@gmail.com"                      
 
 # 🎯 CORREÇÃO DE CAMINHO: Garante que encontra o JSON na pasta correta do GitHub
 DIRETORIO_ATUAL = os.path.dirname(os.path.abspath(__file__))
@@ -55,7 +54,6 @@ def obter_dados_omip_validados():
         "BASE": ("SPEL BASE", 0.0), "Wk": ("Wk", 0.0), "Mês": ("Mês", 0.0), "Trimestre": ("Trimestre", 0.0), "Ano": ("Ano", 0.0), "PPA": ("PPA", 0.0)
     }
     
-    # ☀️ Agora mapeamos todos os contratos da tabela Solar da imagem
     painel_solar = {
         "PPA_27_31": ("FTS PPA 27/31", 0.0),
         "PPA_27_36": ("FTS PPA 27/36", 0.0),
@@ -82,7 +80,7 @@ def obter_dados_omip_validados():
         regex_ano = r"YR-\d{2}"
         regex_ppa = r"PPA-\d{2}/\d{2}"
 
-        # Expressões específicas para a tabela Solar (captura o sufixo dinâmico das datas ex: We03Jun-26)
+        # Expressões específicas para a tabela Solar
         regex_sol_ppa1 = r"FTS\s+PPA\s+27/31"
         regex_sol_ppa2 = r"FTS\s+PPA\s+27/36"
         regex_sol_diario = r"FTS\s+D\s+\S+"
@@ -162,13 +160,16 @@ def enviar_email(dados_pt, dados_es, dados_solar, data_envio):
     # Construção dinâmica das linhas da tabela de Solar
     linhas_solar = ""
     for chave, (nome, preco) in dados_solar.items():
-        if nome != "N/A":
+        if nome != "N/A" and preco > 0.0:
             linhas_solar += f"""
             <tr>
                 <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #d35400;">✨ {nome}</td>
                 <td style="padding: 10px; border: 1px solid #ddd; text-align: right; font-weight: bold; color: #d35400;">{preco:.2f} €/MWh</td>
             </tr>
             """
+    
+    if not linhas_solar:
+        linhas_solar = "<tr><td colspan='2' style='padding: 10px; text-align: center; color: #999;'>Nenhum contrato solar ativo no momento</td></tr>"
 
     html = f"""
     <html>
@@ -245,9 +246,9 @@ if __name__ == "__main__":
     
     pt_atual, es_atual, solar_atual = obter_dados_omip_validados()
     
-    # 🛑 TRAVA DE SEGURANÇA ALTERADA: Valida se o PTEL BASE ou pelo menos um contrato Solar relevante foi lido
-    if pt_atual["BASE"][1] == 0.0 or solar_atual["ANUAL"][1] == 0.0:
-        print("⚠️ [BLOQUEIO] O site do OMIP não devolveu preços válidos para o mercado a prazo ou Solar Futures.")
+    # 🛑 TRAVA DE SEGURANÇA INTELIGENTE: Só bloqueia se PT e ES falharem COMPLETAMENTE (indica erro no site)
+    if pt_atual["BASE"][1] == 0.0 and es_atual["BASE"][1] == 0.0:
+        print("⚠️ [BLOQUEIO] O site do OMIP não devolveu preços válidos para nenhum mercado principal.")
         print("✅ Execução controlada finalizada.")
         exit(0)
 
@@ -263,21 +264,21 @@ if __name__ == "__main__":
         solar_velho = historico_anterior.get("SOLAR", {})
         
         precos_pt_atual = extrair_apenas_precos(pt_atual)
-        precos_es_atual = extrair_apenas_precos(es_atual)
+        precos_es_atual = extrair_apenas_precos(es_es_atual := es_atual)
         precos_solar_atual = extrair_apenas_precos(solar_atual)
         
         precos_pt_velho = extrair_apenas_precos(pt_velho)
         precos_es_velho = extrair_apenas_precos(es_velho)
         precos_solar_velho = extrair_apenas_precos(solar_velho)
         
-        # O disparo ocorre se houver mudança nos prazos ou em qualquer valor da tabela Solar
+        # Compara se houve alguma alteração real nos dados capturados
         if precos_pt_atual != precos_pt_velho or precos_es_atual != precos_es_velho or precos_solar_atual != precos_solar_velho:
             print("💰 Alteração real detetada nos preços de mercado!")
             houve_alteracao = True
 
     print("\n=============================================")
     print(f"🔍 VALORES PRINCIPAIS LIDOS NESTE MOMENTO:")
-    print(f"☀️ Solar Anual:  {solar_atual['ANUAL'][0]} -> {solar_atual['ANUAL'][1]}€")
+    print(f"☀️ Solar Diário: {solar_atual['DIARIO'][0]} -> {solar_atual['DIARIO'][1]}€")
     print(f"🇵🇹 Portugal:     {pt_atual['BASE'][0]} -> {pt_atual['BASE'][1]}€")
     print(f"🇪🇸 Espanha:      {es_atual['BASE'][0]} -> {es_atual['BASE'][1]}€")
     print("=============================================\n")
