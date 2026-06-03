@@ -14,8 +14,7 @@ SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 EMAIL_REMETENTE = "projetodiarioalfaenergia@gmail.com"
 EMAIL_SENHA = "sjdz gkjy xcfv stsf"                      
-EMAIL_DESTINATARIO = "crybenjamim2007@gmail.com, pbenjamim2007@gmail.com, nunofalcao@alfaenergia.pt
-"                      
+EMAIL_DESTINATARIO = "pbenjamim2007@gmail.com, nunofalcao@alfaenergia.pt"                      
 
 # 🎯 CORREÇÃO DE CAMINHO: Garante que encontra o JSON na pasta correta do GitHub
 DIRETORIO_ATUAL = os.path.dirname(os.path.abspath(__file__))
