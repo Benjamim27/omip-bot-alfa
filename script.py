@@ -5,7 +5,7 @@ import os
 import json  
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from datetime import datetime
+from datetime import datetime, timedelta # 💡 Importado o timedelta para ajustar a hora
 
 # ==========================================
 # CONFIGURAÇÕES DE E-MAIL
@@ -244,7 +244,7 @@ if __name__ == "__main__":
     
     pt_atual, es_atual, solar_atual = obter_dados_omip_validados()
     
-    # 🛑 TRAVA DE SEGURANÇA ALTERADA: Valida se o PTEL BASE ou pelo menos um contrato Solar relevante foi lido
+    # 🛑 TRAVA DE SEGURANÇA: Valida se o PTEL BASE ou pelo menos um contrato Solar relevante foi lido
     if pt_atual["BASE"][1] == 0.0 or solar_atual["ANUAL"][1] == 0.0:
         print("⚠️ [BLOQUEIO] O site do OMIP não devolveu preços válidos para o mercado a prazo ou Solar Futures.")
         print("✅ Execução controlada finalizada.")
@@ -252,7 +252,9 @@ if __name__ == "__main__":
 
     historico_anterior = carregar_historico()
     houve_alteracao = False
-    momento_verificacao = datetime.now().strftime("%d/%m/%Y às %H:%M")
+    
+    # 💡 ALTERAÇÃO EXCLUSIVA: Soma exatamente 1 hora ao tempo do servidor para corrigir o atraso
+    momento_verificacao = (datetime.now() + timedelta(hours=1)).strftime("%d/%m/%Y às %H:%M")
 
     if not historico_anterior:
         houve_alteracao = True
@@ -275,7 +277,7 @@ if __name__ == "__main__":
             houve_alteracao = True
 
     print("\n=============================================")
-    print(f"🔍 VALORES PRINCIPAIS LIDOS NESTE MOMENTO:")
+    print(f"🔍 VALORES PRINCIPAIS LIDOS NESTE MOMENTO (Hora Corrigida):")
     print(f"☀️ Solar Anual:  {solar_atual['ANUAL'][0]} -> {solar_atual['ANUAL'][1]}€")
     print(f"🇵🇹 Portugal:     {pt_atual['BASE'][0]} -> {pt_atual['BASE'][1]}€")
     print(f"🇪🇸 Espanha:      {es_atual['BASE'][0]} -> {es_atual['BASE'][1]}€")
