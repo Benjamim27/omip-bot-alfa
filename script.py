@@ -17,7 +17,7 @@ EMAIL_REMETENTE = "projetodiarioalfaenergia@gmail.com"
 EMAIL_SENHA = "sjdz gkjy xcfv stsf"                      
 EMAIL_DESTINATARIO = "crybenjamim2007@gmail.com, pbenjamim2007@gmail.com"                      
 
-# 🧪 MODO DE TESTE (True = força e-mail e atualização do JSON mesmo que os preços sejam iguais)
+# 🧪 MODO DE TESTE (True = força e-mail e atualização do JSON mesmo que dê erro no site)
 MODO_TESTE = True  
 
 # 🎯 CORREÇÃO DE CAMINHO: Garante que encontra o JSON na pasta correta do GitHub
@@ -25,8 +25,8 @@ DIRETORIO_ATUAL = os.path.dirname(os.path.abspath(__file__))
 FICHEIRO_HISTORICO = os.path.join(DIRETORIO_ATUAL, "historico_omip.json")
 
 def capturar_contrato_e_preco(texto, bloco_mercado, padrao_contrato):
-    """Procura o preço num raio de 1500 caracteres após o nome do mercado (evita falhas de fecho de bloco)"""
-    match_bloco = re.search(rf"{bloco_mercado}(.{{1,1500}})", texto, re.DOTALL | re.IGNORECASE)
+    """Procura o preço após o nome do mercado"""
+    match_bloco = re.search(rf"{bloco_mercado}(.{{1,3000}})", texto, re.DOTALL | re.IGNORECASE)
     if not match_bloco:
         return "N/A", 0.0
         
@@ -57,10 +57,9 @@ def obter_dados_omip_validados():
     
     try:
         resposta = requests.get(url, headers=headers, timeout=15)
-        if resposta.status_code != 200:
-            print(f"❌ Erro HTTP ao aceder ao OMIP: {resposta.status_code}")
-            return painel_pt, painel_es, painel_solar
-            
+        print(f"ℹ️ [HTTP STATUS] Código de resposta do OMIP: {resposta.status_code}")
+        
+        # Substitui tags HTML e limpa espaços extras de forma robusta
         texto_pagina = re.sub(r'<[^>]+>', ' ', resposta.text)
         texto_pagina = " ".join(texto_pagina.split())
         
@@ -105,8 +104,8 @@ def carregar_historico():
         try:
             with open(FICHEIRO_HISTORICO, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            print(f"⚠️ Não foi possível ler o JSON antigo: {e}")
     return {}
 
 def salvar_historico(data_envio, pt, es, solar):
@@ -114,12 +113,9 @@ def salvar_historico(data_envio, pt, es, solar):
         historico = {"DATA_ENVIO": data_envio, "PORTUGAL": pt, "ESPANHA": es, "SOLAR": solar}
         with open(FICHEIRO_HISTORICO, 'w', encoding='utf-8') as f:
             json.dump(historico, f, indent=4)
-        print(f"💾 Sucesso absoluto: Dados guardados em {FICHEIRO_HISTORICO}")
+        print(f"💾 [JSON] Guardado com sucesso absoluto em: {FICHEIRO_HISTORICO}")
     except Exception as e:
-        print(f"❌ Erro ao escrever no ficheiro JSON: {e}")
-
-def extrair_apenas_precos(painel):
-    return {chave: valor[1] for chave, valor in painel.items()}
+        print(f"❌ [JSON] Erro crítico ao guardar ficheiro: {e}")
 
 def enviar_email(dados_pt, dados_es, dados_solar, data_envio):
     msg = MIMEMultipart('alternative')
@@ -127,92 +123,53 @@ def enviar_email(dados_pt, dados_es, dados_solar, data_envio):
     msg['From'] = EMAIL_REMETENTE
     msg['To'] = EMAIL_DESTINATARIO
 
-    linhas_solar = ""
-    for chave, (nome, preco) in dados_solar.items():
-        if nome != "N/A" and preco > 0.0:
-            linhas_solar += f"<tr><td style='padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #d35400;'>✨ {nome}</td><td style='padding: 10px; border: 1px solid #ddd; text-align: right; font-weight: bold; color: #d35400;'>{preco:.2f} €/MWh</td></tr>"
-    
-    if not linhas_solar:
-        linhas_solar = "<tr><td colspan='2' style='padding: 10px; text-align: center; color: #999;'>Nenhum contrato solar ativo no momento</td></tr>"
-
     html = f"""
     <html>
-    <body style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
-        <div style="max-width: 600px; margin: 0 auto; background: white; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-            <div style="background-color: #1f3a60; color: white; padding: 20px; text-align: center; font-size: 20px; font-weight: bold;">
-                📌 RELATÓRIO DE PREÇOS OMIP
-            </div>
-            <div style="padding: 20px;">
-                <p>Relatório gerado em: <b>{data_envio}</b></p>
-                <h3>🇵🇹 Portugal (BASE): {dados_pt['BASE'][1]:.2f} €/MWh</h3>
-                <h3>🇪🇸 Espanha (BASE): {dados_es['BASE'][1]:.2f} €/MWh</h3>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr style="background-color: #fdf5e6;"><th>Contrato Solar</th><th>Preço</th></tr>
-                    {linhas_solar}
-                </table>
-            </div>
-        </div>
+    <body>
+        <h2>📌 RELATÓRIO DE PREÇOS OMIP - FORÇADO</h2>
+        <p>Relatório gerado em: {data_envio}</p>
+        <p><b>PT BASE:</b> {dados_pt['BASE'][1]:.2f} €/MWh</p>
+        <p><b>ES BASE:</b> {dados_es['BASE'][1]:.2f} €/MWh</p>
     </body>
     </html>
     """
     msg.attach(MIMEText(html, 'html', 'utf-8'))
 
     try:
+        print("🔌 A ligar ao SMTP do Gmail...")
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=15)
         server.starttls()
+        print("🔑 A autenticar...")
         server.login(EMAIL_REMETENTE, EMAIL_SENHA)
         lista_emails = [email.strip() for email in EMAIL_DESTINATARIO.split(",")]
         server.sendmail(EMAIL_REMETENTE, lista_emails, msg.as_string())
         server.quit()
-        print("✅ E-mail enviado com sucesso absoluto para todos!")
+        print("✅ [EMAIL] Enviado com sucesso absoluto para todos!")
         return True
     except Exception as e:
-        print(f"❌ Falha no envio do e-mail (SMTP): {e}")
+        print(f"❌ [EMAIL] Falha crítica no envio SMTP: {e}")
         return False
 
 if __name__ == "__main__":
-    print("🔄 A verificar atualizações de preços no mercado OMIP...")
+    print("🔄 A iniciar execução forçada do Script...")
     
     pt_atual, es_atual, solar_atual = obter_dados_omip_validados()
     
-    print(f"ℹ️ Preço detetado para PT Base: {pt_atual['BASE'][1]} €")
-    print(f"ℹ️ Preço detetado para ES Base: {es_atual['BASE'][1]} €")
+    print(f"ℹ️ Valores extraídos para debug: PT Base = {pt_atual['BASE'][1]} € | ES Base = {es_atual['BASE'][1]} €")
 
-    # Trava inteligente reajustada
+    # 🚨 TRAVA DESATIVADA PARA TESTES: Mesmo que venha a zero, o script continua
     if pt_atual["BASE"][1] == 0.0 and es_atual["BASE"][1] == 0.0:
-        print("⚠️ [BLOQUEIO] O site do OMIP não devolveu preços válidos. Paragem de segurança ativa.")
-        exit(0)
+        print("⚠️ [AVISO] Valores vieram a zero, mas a paragem foi ignorada para forçar gravação do JSON.")
 
-    historico_anterior = carregar_historico()
-    houve_alteracao = False
-    
     fuso_lisboa = pytz.timezone("Europe/Lisbon")
     momento_verificacao = datetime.now(fuso_lisboa).strftime("%d/%m/%Y às %H:%M")
 
-    if not historico_anterior:
-        print("🆕 Histórico vazio. Forçando criação...")
-        houve_alteracao = True
-    else:
-        precos_pt_atual = extrair_apenas_precos(pt_atual)
-        precos_es_atual = extrair_apenas_precos(es_atual)
-        precos_solar_atual = extrair_apenas_precos(solar_atual)
+    # Força a execução total
+    print("🧪 [MODO FORÇADO] A disparar rotinas de e-mail e escrita de ficheiro...")
+    email_sucesso = enviar_email(pt_atual, es_atual, solar_atual, momento_verificacao)
+    
+    # INDEPENDENTEMENTE do e-mail dar erro ou não, ele vai tentar salvar o JSON agora!
+    salvar_historico(momento_verificacao, pt_atual, es_atual, solar_atual)
         
-        precos_pt_velho = extrair_apenas_precos(historico_anterior.get("PORTUGAL", {}))
-        precos_es_velho = extrair_apenas_precos(historico_anterior.get("ESPANHA", {}))
-        precos_solar_velho = extrair_apenas_precos(historico_anterior.get("SOLAR", {}))
-        
-        if precos_pt_atual != precos_pt_velho or precos_es_atual != precos_es_velho or precos_solar_atual != precos_solar_velho:
-            print("💰 Alteração real detetada nos preços!")
-            houve_alteracao = True
-
-    if MODO_TESTE:
-        print("🧪 [MODO TESTE] A forçar a execução das ações...")
-        houve_alteracao = True
-
-    if houve_alteracao:
-        if enviar_email(pt_atual, es_atual, solar_atual, momento_verificacao):
-            salvar_historico(momento_verificacao, pt_atual, es_atual, solar_atual)
-    else:
-        print("💤 Preços idênticos. Nada a fazer.")
-        
+    print("🏁 Execução terminada.")
     exit(0)
