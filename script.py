@@ -9,13 +9,17 @@ from datetime import datetime
 import pytz  # 🌍 Biblioteca para controlar o fuso horário de Portugal
 
 # ==========================================
-# CONFIGURAÇÕES DE E-MAIL
+# CONFIGURAÇÕES DE E-MAIL E PARÂMETROS
 # ==========================================
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 EMAIL_REMETENTE = "projetodiarioalfaenergia@gmail.com"
 EMAIL_SENHA = "sjdz gkjy xcfv stsf"                      
 EMAIL_DESTINATARIO = "crybenjamim2007@gmail.com, pbenjamim2007@gmail.com"                      
+
+# 🧪 MODO DE TESTE (True = ignora o bloqueio matemático e envia e-mail/atualiza JSON sempre)
+# Altera para False quando fores colocar o script a correr definitivamente no GitHub Actions.
+MODO_TESTE = True  
 
 # 🎯 CORREÇÃO DE CAMINHO: Garante que encontra o JSON na pasta correta do GitHub
 DIRETORIO_ATUAL = os.path.dirname(os.path.abspath(__file__))
@@ -261,6 +265,7 @@ if __name__ == "__main__":
     momento_verificacao = datetime.now(fuso_lisboa).strftime("%d/%m/%Y às %H:%M")
 
     if not historico_anterior:
+        print("🆕 Histórico local não encontrado. Forçando primeiro envio...")
         houve_alteracao = True
     else:
         pt_velho = historico_anterior.get("PORTUGAL", {})
@@ -278,6 +283,11 @@ if __name__ == "__main__":
         if precos_pt_atual != precos_pt_velho or precos_es_atual != precos_es_velho or precos_solar_atual != precos_solar_velho:
             print("💰 Alteração real detetada nos preços de mercado!")
             houve_alteracao = True
+
+    # 🧪 Se o MODO_TESTE estiver ativo, força o envio de qualquer maneira
+    if MODO_TESTE:
+        print("🧪 [MODO TESTE ATIVO] A ignorar bloqueio matemático para forçar envio de e-mail e atualização do JSON...")
+        houve_alteracao = True
 
     print("\n=============================================")
     print(f"🔍 VALORES PRINCIPAIS LIDOS NESTE MOMENTO (Hora local: {momento_verificacao}):")
