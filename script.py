@@ -6,6 +6,7 @@ import json
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import datetime
+import pytz  # 🌍 Biblioteca para controlar o fuso horário de Portugal
 
 # ==========================================
 # CONFIGURAÇÕES DE E-MAIL
@@ -246,7 +247,7 @@ if __name__ == "__main__":
     
     pt_atual, es_atual, solar_atual = obter_dados_omip_validados()
     
-    # 🛑 TRAVA DE SEGURANÇA INTELIGENTE: Só bloqueia se PT e ES falharem COMPLETAMENTE (indica erro no site)
+    # 🛑 TRAVA DE SEGURANÇA INTELIGENTE: Só bloqueia se PT e ES falharem COMPLETAMENTE
     if pt_atual["BASE"][1] == 0.0 and es_atual["BASE"][1] == 0.0:
         print("⚠️ [BLOQUEIO] O site do OMIP não devolveu preços válidos para nenhum mercado principal.")
         print("✅ Execução controlada finalizada.")
@@ -254,7 +255,10 @@ if __name__ == "__main__":
 
     historico_anterior = carregar_historico()
     houve_alteracao = False
-    momento_verificacao = datetime.now().strftime("%d/%m/%Y às %H:%M")
+    
+    # 🌍 CORREÇÃO DE TIMEZONE: Força a hora do e-mail a seguir o fuso horário de Portugal (Lisboa)
+    fuso_lisboa = pytz.timezone("Europe/Lisbon")
+    momento_verificacao = datetime.now(fuso_lisboa).strftime("%d/%m/%Y às %H:%M")
 
     if not historico_anterior:
         houve_alteracao = True
@@ -264,20 +268,19 @@ if __name__ == "__main__":
         solar_velho = historico_anterior.get("SOLAR", {})
         
         precos_pt_atual = extrair_apenas_precos(pt_atual)
-        precos_es_atual = extrair_apenas_precos(es_es_atual := es_atual)
+        precos_es_atual = extrair_apenas_precos(es_atual)
         precos_solar_atual = extrair_apenas_precos(solar_atual)
         
         precos_pt_velho = extrair_apenas_precos(pt_velho)
         precos_es_velho = extrair_apenas_precos(es_velho)
         precos_solar_velho = extrair_apenas_precos(solar_velho)
         
-        # Compara se houve alguma alteração real nos dados capturados
         if precos_pt_atual != precos_pt_velho or precos_es_atual != precos_es_velho or precos_solar_atual != precos_solar_velho:
             print("💰 Alteração real detetada nos preços de mercado!")
             houve_alteracao = True
 
     print("\n=============================================")
-    print(f"🔍 VALORES PRINCIPAIS LIDOS NESTE MOMENTO:")
+    print(f"🔍 VALORES PRINCIPAIS LIDOS NESTE MOMENTO (Hora local: {momento_verificacao}):")
     print(f"☀️ Solar Diário: {solar_atual['DIARIO'][0]} -> {solar_atual['DIARIO'][1]}€")
     print(f"🇵🇹 Portugal:     {pt_atual['BASE'][0]} -> {pt_atual['BASE'][1]}€")
     print(f"🇪🇸 Espanha:      {es_atual['BASE'][0]} -> {es_atual['BASE'][1]}€")
