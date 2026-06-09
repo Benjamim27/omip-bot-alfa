@@ -1,9 +1,9 @@
 {
-    "DATA_ENVIO": "08/06/2026 \u00e0s 21:00",
+    "DATA_ENVIO": "09/06/2026 \u00e0s 15:42",
     "PORTUGAL": {
         "BASE": [
             "PTEL BASE",
-            51.12
+            38.96
         ],
         "Wk": [
             "Wk25-26",
@@ -25,7 +25,7 @@
     "ESPANHA": {
         "BASE": [
             "SPEL BASE",
-            50.81
+            38.96
         ],
         "Wk": [
             "Wk25-26",
